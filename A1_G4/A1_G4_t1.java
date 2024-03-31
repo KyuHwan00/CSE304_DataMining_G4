@@ -4,8 +4,11 @@ import java.util.*;
 public class A1_G4_t1 {
 
     static Map<Integer, LinkedHashSet<String>> dataSet = new HashMap<>();
-    static Map<Integer, Set<LinkedHashSet<String>>> result = new HashMap<>();
+    static Map<LinkedHashSet<String>, Integer> result = new HashMap<>();
     static Float minSupport;
+    static int modBase = 73;
+    static int maxLeafSize = 4000;
+
     public static void main(String[] args) {
         // init the input file, minimum support from command line
         String inputFile = args[0];
@@ -35,7 +38,13 @@ public class A1_G4_t1 {
             e.printStackTrace();
         }
         // call the apriori algorithm
+        // Date start = new Date();
         apriori(itemSets_1);
+        // Date end = new Date();
+        // long time = end.getTime() - start.getTime();
+        printResultsInAscendingOrder(result);
+        // System.out.println("Execution time is " + time + " milliseconds");
+
     }
 
     // apriori algorithm
@@ -44,22 +53,19 @@ public class A1_G4_t1 {
         Set<LinkedHashSet<String>> l1 = getSupportedItemset(itemSet_1);
         Set<LinkedHashSet<String>> supportedItemset = l1;
         for(int k = 2; !supportedItemset.isEmpty(); k++) {
-            result.put(k-1, supportedItemset);
             // candidate generation
             Set<LinkedHashSet<String>> candidateSet = getUnion(supportedItemset, k);
             Set<LinkedHashSet<String>> candidateSetPruned = pruning(candidateSet, supportedItemset, k-1);
             // subset
-            supportedItemset = getAboveMinSup(candidateSetPruned, dataSet.values());
+            supportedItemset = getAboveMinSup(candidateSetPruned, dataSet.values(), k);
         }
-        
-        printResultsInAscendingOrder(result);
     }
 
     public static Set<LinkedHashSet<String>> getSupportedItemset(Set<LinkedHashSet<String>> itemset) {
         Set<LinkedHashSet<String>> map = new HashSet<>();
         for (LinkedHashSet<String> comb : itemset) {
-            Float support = calcSupport(comb);
-            if (support >= minSupport) {
+            Boolean islarge = calcSupport(comb);
+            if (islarge) {
                 map.add(comb);
             }
         }
@@ -67,30 +73,56 @@ public class A1_G4_t1 {
         return map;
     }
     // calculate the support of an itemset
-    public static Float calcSupport(LinkedHashSet<String> itemset) {
+    public static Boolean calcSupport(LinkedHashSet<String> itemset) {
         Integer freq = 0;
+        Boolean islarge = false;
         for (LinkedHashSet<String> item : dataSet.values()) {
             if (item.containsAll(itemset)) {
                 freq++;
             }
         }
-        return freq / ((float)dataSet.size());
+        Float support = freq / ((float)dataSet.size());
+        if (support >= minSupport) {
+            islarge = true;
+            result.put(itemset, freq);
+        }
+        return islarge;
     }
     
-    public static Set<LinkedHashSet<String>> getAboveMinSup(Set<LinkedHashSet<String>> C_k, Collection<LinkedHashSet<String>> transactions) {
+    public static Set<LinkedHashSet<String>> getAboveMinSup(Set<LinkedHashSet<String>> C_k, Collection<LinkedHashSet<String>> transactions, int k) {
         Set<LinkedHashSet<String>> supportedSet = new HashSet<>();
         Map<LinkedHashSet<String>, Integer> C_t = new HashMap<>();
+
+
+        // for (LinkedHashSet<String> item : C_k) {
+        //     for (LinkedHashSet<String> transaction : transactions) {
+        //         if (transaction.containsAll(item)) {
+        //             C_t.put(item, C_t.getOrDefault(item, 0) + 1);
+        //         }
+        //     }
+        // }
+
+        HashTree root = new HashTree(maxLeafSize);
         for (LinkedHashSet<String> item : C_k) {
-            for (LinkedHashSet<String> transaction : transactions) {
+            root.insert(new ArrayList<>(item));
+        }
+
+        for (LinkedHashSet<String> transaction : transactions) {
+            List<String> transactionList = new ArrayList<>(transaction);
+            Set<List<String>> identifiedSet = new HashSet<>();
+            identifiedSet = root.findSubsets(transactionList, k);
+            for (List<String> item : identifiedSet) {
                 if (transaction.containsAll(item)) {
-                    C_t.put(item, C_t.getOrDefault(item, 0) + 1);
+                    C_t.put(new LinkedHashSet<>(item), C_t.getOrDefault(new LinkedHashSet<>(item), 0) + 1);
                 }
             }
         }
+        
         for (Map.Entry<LinkedHashSet<String>, Integer> entry : C_t.entrySet()) {
             float support = entry.getValue() / (float) transactions.size();
             if (support >= minSupport) {
                 supportedSet.add(entry.getKey());
+                result.put(entry.getKey(), entry.getValue());
             }
         }
 
@@ -104,7 +136,7 @@ public class A1_G4_t1 {
                 if (i.equals(j)) {
                     continue;
                 }
-                LinkedHashSet<String> union = new LinkedHashSet<>(i);
+                LinkedHashSet<String> union = new LinkedHashSet<>();
                 Iterator<String> iIterator = i.iterator();
                 Iterator<String> jIterator = j.iterator();
                 for (int k = 0; k < length - 2; k++) {
@@ -113,6 +145,7 @@ public class A1_G4_t1 {
                     if (!iNext.equals(jNext)) {
                         break;
                     }
+                    
                     union.add(iNext);
                 }
                 String iNext = iIterator.next();
@@ -124,7 +157,6 @@ public class A1_G4_t1 {
                     union.add(jNext);
                     union.add(iNext);
                 }
-
                 if (union.size() == length) {
                     resultSet.add(union);
                 }
@@ -167,14 +199,12 @@ public class A1_G4_t1 {
         }
     }
 
-    public static void printResultsInAscendingOrder(Map<Integer, Set<LinkedHashSet<String>>> result) {
+    public static void printResultsInAscendingOrder(Map<LinkedHashSet<String>, Integer> result) {
         List<Map.Entry<String, Float>> itemList = new ArrayList<>();
-
-        for (Map.Entry<Integer, Set<LinkedHashSet<String>>> entry : result.entrySet()) {
-            for (LinkedHashSet<String> item : entry.getValue()) {
-                String itemString = String.join(", ", item);
-                itemList.add(new AbstractMap.SimpleEntry<>(itemString, calcSupport(item)));
-            }
+        int total = dataSet.size();
+        for (LinkedHashSet<String> item : result.keySet()) {
+            String itemString = String.join(", ", item);
+            itemList.add(new AbstractMap.SimpleEntry<>(itemString, result.get(item) / ((float) total)));
         }
 
         // Sorting based on support value in ascending order
@@ -182,6 +212,84 @@ public class A1_G4_t1 {
 
         for (Map.Entry<String, Float> item : itemList) {
             System.out.println(item.getKey() + " : " + String.format("%.7f", item.getValue()).replaceFirst("0*$", ""));
+        }
+    }
+
+    public static class HashTree {
+        private Node root;
+        public HashTree(int maxLeafSize) {
+            this.root = new Node(false, maxLeafSize, 1);
+        }
+
+        public void insert(List<String> itemset) {
+            root.insert(itemset, 0);
+        }
+
+        // Subset operation to find all itemsets within a transaction
+        public Set<List<String>> findSubsets(List<String> transaction, int k) {
+            return root.findSubsets(transaction, 0, k);
+        }
+
+        private static class Node {
+            boolean isLeaf;
+            List<List<String>> itemsets;
+            Map<Integer, Node> children;
+            int level;
+            int maxLeafSize;
+
+            Node(boolean isLeaf, int maxLeafSize, int level) {
+                this.isLeaf = isLeaf;
+                this.maxLeafSize = maxLeafSize;
+                this.level = level;
+                this.itemsets = new ArrayList<>();
+                this.children = new HashMap<>();
+            }
+
+            void insert(List<String> itemset, int k) {
+                if (k >= itemset.size()) {
+                    itemsets.add(itemset);
+                    return;
+                }
+                if (isLeaf) {
+                    itemsets.add(itemset);
+                    if (itemsets.size() > maxLeafSize) {
+                        split(k);
+                    }
+                } else {
+                    int hash = itemset.get(k).charAt(0) % modBase;
+                    children.putIfAbsent(hash, new Node(true, maxLeafSize, level + 1));
+                    children.get(hash).insert(itemset, k + 1);
+                }
+            }
+
+            void split(int k) {
+                isLeaf = false;
+                List<List<String>> tempItemsets = new ArrayList<>(itemsets);
+                itemsets.clear();
+                for (List<String> itemset : tempItemsets) {
+                    insert(itemset, k);
+                }
+            }
+
+            Set<List<String>> findSubsets(List<String> transaction, int index, int k) {
+                Set<List<String>> subsets = new HashSet<>();
+                if (index >= transaction.size()) {
+                    subsets.addAll(itemsets);
+                    return subsets;
+                }
+                if (isLeaf) {
+                    subsets.addAll(itemsets);
+                } else {
+                    for (int i = index; i < transaction.size()-k + level; i++) {
+                        int hash = transaction.get(i).charAt(0) % modBase;
+                        Node child = children.get(hash);
+                        if (child != null) {
+                            subsets.addAll(child.findSubsets(transaction, index + 1, k));
+                        }
+                    }
+                }
+                return subsets;
+            }
         }
     }
 }
