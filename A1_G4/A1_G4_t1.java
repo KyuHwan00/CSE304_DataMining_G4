@@ -5,9 +5,10 @@ public class A1_G4_t1 {
 
     static Map<Integer, LinkedHashSet<String>> dataSet = new HashMap<>();
     static Map<LinkedHashSet<String>, Integer> result = new HashMap<>();
+    static Map<Integer, LinkedHashSet<LinkedHashSet<String>>> dataSet_tid = new HashMap<>();
     static Float minSupport;
-    static int modBase = 73;
-    static int maxLeafSize = 4000;
+    static int modBase = 101;
+    static int maxLeafSize = 1000;
 
     public static void main(String[] args) {
         // init the input file, minimum support from command line
@@ -29,6 +30,8 @@ public class A1_G4_t1 {
                     LinkedHashSet<String> comb = new LinkedHashSet<>();
                     comb.add(item);
                     itemSets_1.add(comb);
+                    dataSet_tid.putIfAbsent(tid, new LinkedHashSet<>());
+                    dataSet_tid.get(tid).add(comb);
                 }
                 dataSet.put(tid, itemSet);
                 tid++;
@@ -40,6 +43,7 @@ public class A1_G4_t1 {
         // call the apriori algorithm
         // Date start = new Date();
         apriori(itemSets_1);
+        // aprioriTid(itemSets_1);
         // Date end = new Date();
         // long time = end.getTime() - start.getTime();
         printResultsInAscendingOrder(result);
@@ -60,6 +64,64 @@ public class A1_G4_t1 {
             supportedItemset = getAboveMinSup(candidateSetPruned, dataSet.values(), k);
         }
     }
+
+    // apriori algorithm with tid
+    public static void aprioriTid(Set<LinkedHashSet<String>> itemSet_1) {
+        Set<LinkedHashSet<String>> l1 = getSupportedItemset(itemSet_1);
+        Set<LinkedHashSet<String>> supportedItemset = l1;
+
+        Map<Integer, LinkedHashSet<LinkedHashSet<String>>> C_tid = dataSet_tid;
+
+        for(int k = 2; !supportedItemset.isEmpty(); k++) {
+
+            // candidate generation
+            Set<LinkedHashSet<String>> candidateSet = getUnion(supportedItemset, k);
+            Set<LinkedHashSet<String>> candidateSetPruned = pruning(candidateSet, supportedItemset, k-1);
+
+            Map<Integer, Set<LinkedHashSet<String>>> C_newtid = new HashMap<>();
+            Map<LinkedHashSet<String>, Integer> C_k = new HashMap<>();
+
+            for (Integer tid : C_tid.keySet()) {
+                LinkedHashSet<LinkedHashSet<String>> C_new = new LinkedHashSet<>();
+                LinkedHashSet<LinkedHashSet<String>> entry = C_tid.get(tid);
+                for (LinkedHashSet<String> item : candidateSetPruned) {
+                    List<String> removed_k = new ArrayList<>(item);
+                    List<String> removed_k_1 = new ArrayList<>(item);
+                    removed_k.remove(k-1);
+                    removed_k_1.remove(k-2);
+                    boolean indicator_k = false;
+                    boolean indicator_k_1 = false;
+                    for (LinkedHashSet<String> comb : entry) {
+                        if (comb.containsAll(removed_k)) {
+                            indicator_k = true;
+                        } else if (comb.containsAll(removed_k_1)) {
+                            indicator_k_1 = true;
+                        }
+                        if (indicator_k && indicator_k_1) {
+                            C_new.add(item);
+                            C_k.put(item, C_k.getOrDefault(item, 0) + 1);
+
+                            break;
+                        }
+                    }
+                }
+
+                if (!C_new.isEmpty()) {
+                    C_newtid.putIfAbsent(tid, C_new);
+                }
+            }
+
+            supportedItemset.clear();
+            for (Map.Entry<LinkedHashSet<String>, Integer> entry : C_k.entrySet()) {
+                float support = entry.getValue() / (float) dataSet.size();
+                if (support >= minSupport) {
+                    supportedItemset.add(entry.getKey());
+                    result.put(entry.getKey(), entry.getValue());
+                }
+            }
+        }        
+    }
+
 
     public static Set<LinkedHashSet<String>> getSupportedItemset(Set<LinkedHashSet<String>> itemset) {
         Set<LinkedHashSet<String>> map = new HashSet<>();
@@ -119,7 +181,7 @@ public class A1_G4_t1 {
         }
         
         for (Map.Entry<LinkedHashSet<String>, Integer> entry : C_t.entrySet()) {
-            float support = entry.getValue() / (float) transactions.size();
+            float support = entry.getValue() / (float) dataSet.size();
             if (support >= minSupport) {
                 supportedSet.add(entry.getKey());
                 result.put(entry.getKey(), entry.getValue());
@@ -256,7 +318,7 @@ public class A1_G4_t1 {
                         split(k);
                     }
                 } else {
-                    int hash = itemset.get(k).charAt(0) % modBase;
+                    int hash = itemset.get(k).hashCode() % modBase;
                     children.putIfAbsent(hash, new Node(true, maxLeafSize, level + 1));
                     children.get(hash).insert(itemset, k + 1);
                 }
@@ -281,7 +343,7 @@ public class A1_G4_t1 {
                     subsets.addAll(itemsets);
                 } else {
                     for (int i = index; i < transaction.size()-k + level; i++) {
-                        int hash = transaction.get(i).charAt(0) % modBase;
+                        int hash = transaction.get(i).hashCode() % modBase;
                         Node child = children.get(hash);
                         if (child != null) {
                             subsets.addAll(child.findSubsets(transaction, index + 1, k));
