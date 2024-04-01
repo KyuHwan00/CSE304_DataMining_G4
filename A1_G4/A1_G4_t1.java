@@ -40,15 +40,26 @@ public class A1_G4_t1 {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        
         // call the apriori algorithm
-        // Date start = new Date();
-        apriori(itemSets_1);
-        // aprioriTid(itemSets_1);
-        // Date end = new Date();
-        // long time = end.getTime() - start.getTime();
+        calRuntime("apriori",false, itemSets_1);
         printResultsInAscendingOrder(result);
-        // System.out.println("Execution time is " + time + " milliseconds");
 
+
+    }
+    private static void calRuntime(String flag, boolean isprint,Set<LinkedHashSet<String>> itemSet) {
+        Date start = new Date();
+        if (flag.equals("apriori")) {
+            apriori(itemSet);
+        } else {
+            aprioriTid(itemSet);
+        }
+        Date end = new Date();
+        long time = end.getTime() - start.getTime();
+        if (isprint) {
+            System.out.println("Execution time is " + time + " milliseconds");
+
+        }
     }
 
     // apriori algorithm
