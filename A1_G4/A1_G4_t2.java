@@ -5,9 +5,7 @@ import java.util.stream.Collectors;
 public class A1_G4_t2 {
 
     public static void main(String[] args) throws FileNotFoundException {
-        long start = System.currentTimeMillis();
         new FPGrowth(new File(args[0]), Float.parseFloat(args[1]));
-        // System.out.println((System.currentTimeMillis() - start));
     }
 }
 
@@ -20,11 +18,15 @@ class FPGrowth {
 
 
     public FPGrowth(File file, Float sup) throws FileNotFoundException {
+        long start = System.currentTimeMillis();
+
         this.sup = sup; // support threshold
         this.transactionCount = 0;
         construct_fptree(file);
         fpgrowth(fptree, sup, headerTable);
+        long time = System.currentTimeMillis() - start;
         printFP();
+        // System.out.println("Execution time is " + time + " milliseconds");
     }
 
     private void construct_fptree(File file) throws FileNotFoundException {
@@ -178,7 +180,7 @@ class FPGrowth {
 
     void FPgrowth(FPtree fptree, String base, Float sup, ArrayList<FPtree> headerTable, Map<String, Integer> frequentPatterns) {
         for (FPtree iteminTree : headerTable) {
-            String currentPattern = (base != null ? base : "") + (base != null ? "," : "") + iteminTree.item;
+            String currentPattern = (base != null ? base : "") + (base != null ? ", " : "") + iteminTree.item;
             int supportofCurrentPattern = 0;
             Map<String, Integer> conditionalPatternBase = new HashMap<String, Integer>();
             while (iteminTree.next != null) {
