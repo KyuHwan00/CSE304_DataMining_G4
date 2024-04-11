@@ -17,7 +17,7 @@ public class A1_G4_t1 {
 
     private static void exec(String flag, String inputFile) throws IOException {
         Date start = new Date();
-        Set<LinkedHashSet<String>> itemSets_1 = dataLoader(inputFile);
+        Set<LinkedHashSet<String>> itemSets_1 = dataLoader(inputFile, flag);
         Set<LinkedHashSet<String>> l1 = gernerate(itemSets_1);
 
         if (flag.equals("apriori")) {
@@ -32,7 +32,7 @@ public class A1_G4_t1 {
         // System.out.println("Execution time is " + time + " milliseconds");
     }
 
-    private static Set<LinkedHashSet<String>> dataLoader(String inputFile) throws IOException {
+    private static Set<LinkedHashSet<String>> dataLoader(String inputFile, String flag) throws IOException {
         int tid = 0;
         Set<LinkedHashSet<String>> itemSets_1 = new HashSet<>();
 
@@ -47,8 +47,10 @@ public class A1_G4_t1 {
                     LinkedHashSet<String> comb = new LinkedHashSet<>();
                     comb.add(item);
                     itemSets_1.add(comb);
-                    dataSet_tid.putIfAbsent(tid, new LinkedHashSet<>());
-                    dataSet_tid.get(tid).add(comb);
+                    if (!flag.equals("apriori")) {
+                        dataSet_tid.putIfAbsent(tid, new LinkedHashSet<>());
+                        dataSet_tid.get(tid).add(comb);
+                    }
                 }
                 dataSet.put(tid, itemSet);
                 tid++;
@@ -100,13 +102,12 @@ public class A1_G4_t1 {
             // candidate generation
             Set<LinkedHashSet<String>> candidateSet = join(supportedItemset, k);
             Set<LinkedHashSet<String>> prunedcandidateSet = prune(candidateSet, supportedItemset, k-1);
-            
             // tid operation
             Map<Integer, LinkedHashSet<LinkedHashSet<String>>> C_newtid = new HashMap<>();
             Map<LinkedHashSet<String>, Integer> C_k = new HashMap<>();
+
             tidHelper(C_tid, C_k, C_newtid, prunedcandidateSet, k);
-
-
+            C_tid = C_newtid;
             // calculate the support of an itemset and update the supported itemset
             supportedItemset.clear();
             for (Map.Entry<LinkedHashSet<String>, Integer> entry : C_k.entrySet()) {
@@ -137,22 +138,13 @@ public class A1_G4_t1 {
                 List<String> removed_k_1 = new ArrayList<>(item);
                 removed_k.remove(k-1);
                 removed_k_1.remove(k-2);
-                boolean indicator_k = false;
-                boolean indicator_k_1 = false;
-                // check if the k-1 subset and k-2 subset are in the transaction
-                for (LinkedHashSet<String> comb : entry) {
-                    if (comb.containsAll(removed_k)) {
-                        indicator_k = true;
-                    } else if (comb.containsAll(removed_k_1)) {
-                        indicator_k_1 = true;
-                    }
+                LinkedHashSet<String> removed_k_set = new LinkedHashSet<>(removed_k);
+                LinkedHashSet<String> removed_k_1_set = new LinkedHashSet<>(removed_k_1);
 
-                    // if both k-1 subset and k-2 subset are in the transaction, add the item to the new candidate set
-                    if (indicator_k && indicator_k_1) {
-                        C_new.add(item);
-                        C_k.put(item, C_k.getOrDefault(item, 0) + 1);
-                        break;
-                    }
+                // check if the k-1 subset and k-2 subset are in the transaction
+                if (entry.contains(removed_k_set) && entry.contains(removed_k_1_set)) {
+                    C_new.add(item);
+                    C_k.put(item, C_k.getOrDefault(item, 0) + 1);
                 }
             }
             // update the new candidate tidset
@@ -160,8 +152,6 @@ public class A1_G4_t1 {
                 C_newtid.putIfAbsent(tid, C_new);
             }
         }
-        // update the candidate set with tid
-        C_tid = C_newtid;
     }
 
     public static Set<LinkedHashSet<String>> gernerate(Set<LinkedHashSet<String>> itemset) {
@@ -319,7 +309,8 @@ public class A1_G4_t1 {
         itemList.sort(Map.Entry.comparingByValue());
 
         for (Map.Entry<String, Float> item : itemList) {
-            System.out.println(item.getKey() + " : " + String.format("%.7f", item.getValue()).replaceFirst("0*$", ""));
+            System.out.println(item.getKey() + " : " + item.getValue());
+            // System.out.println(item.getKey() + " : " + String.format("%f", item.getValue()).replaceFirst("0*$", ""));
         }
     }
 }
