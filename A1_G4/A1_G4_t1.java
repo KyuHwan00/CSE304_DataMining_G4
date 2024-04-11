@@ -309,7 +309,7 @@ public class A1_G4_t1 {
         itemList.sort(Map.Entry.comparingByValue());
 
         for (Map.Entry<String, Float> item : itemList) {
-            System.out.println(item.getKey() + " : " + item.getValue());
+            System.out.println(item.getKey() + " " + item.getValue());
             // System.out.println(item.getKey() + " : " + String.format("%f", item.getValue()).replaceFirst("0*$", ""));
         }
     }
