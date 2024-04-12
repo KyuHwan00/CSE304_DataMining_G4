@@ -1,5 +1,5 @@
 # DataMining-G4
-Group 8 : 이규환, 이동규, 이채은, 황성식
+Group 4 : 이규환, 이동규, 이채은, 황성식
 ___
 ## ⚙️ Develop ENV
   - `Java 11`
