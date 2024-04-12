@@ -18,7 +18,6 @@ class FPGrowth {
 
     public FPGrowth(File file, Float sup) throws FileNotFoundException {
         long start = System.currentTimeMillis();
-
         this.sup = sup; // support threshold
         this.transactionCount = 0;
         fptree(file);
@@ -37,6 +36,7 @@ class FPGrowth {
     }
 
     private void preProcessing(File file, Map<String, Integer> itemsMapToFrequencies, List<String> sortedItemsByFrequencies, ArrayList<String> itemsToRemove) throws FileNotFoundException {
+        // Read the file and count the frequency of each item
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = br.readLine()) != null) {
@@ -52,6 +52,7 @@ class FPGrowth {
         sortedItemsByFrequencies.add("null");
         itemsMapToFrequencies.put("null", 0);
 
+        // Sort the items by frequency
         itemsMapToFrequencies.keySet().forEach(item -> {
             int count = itemsMapToFrequencies.get(item);
             int insertIndex = 0;
@@ -63,7 +64,7 @@ class FPGrowth {
                 insertIndex++;
             }
         });
-
+        // Remove items that are below the support threshold
         sortedItemsByFrequencies.removeAll(itemsToRemove);
         itemsToRemove.clear();
         sortedItemsByFrequencies.forEach(item -> {
@@ -76,6 +77,7 @@ class FPGrowth {
 
 
     private void construct_fpTree(File file, Map<String, Integer> itemsMapToFrequencies, List<String> sortedItemsByFrequencies, ArrayList<String> itemsToRemove) throws FileNotFoundException {
+        // Create the header table
         headerTable = new ArrayList<>();
         for (String item : sortedItemsByFrequencies) {
             if (!itemsToRemove.contains(item)) {
@@ -86,18 +88,19 @@ class FPGrowth {
         fptree = new FPtree("null");
         fptree.item = null;
         fptree.root = true;
-
+        // Construct the FP tree
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = br.readLine()) != null) {
                 List<String> transaction = Arrays.asList(line.split(","));
                 List<String> filteredTransaction = new ArrayList<>();
+                // check if the item not in itemsToRemove and in itemsMaptoFrequencies
                 for (String item : transaction) {
                     if (!itemsToRemove.contains(item) && itemsMapToFrequencies.containsKey(item)) {
                         filteredTransaction.add(item);
                     }
                 }
-
+                // Sort the items by frequency
                 filteredTransaction.sort((item1, item2) -> {
                     int frequencyCompare = itemsMapToFrequencies.get(item2).compareTo(itemsMapToFrequencies.get(item1));
                     if (frequencyCompare == 0) {
@@ -116,8 +119,10 @@ class FPGrowth {
     }
 
     private void insertTransaction(List<String> transaction, FPtree node, List<FPtree> headerTable) {
-        if (transaction.isEmpty()) return;
+        // insert the transaction into the FP tree
 
+        if (transaction.isEmpty()) return;
+        
         String currentItem = transaction.get(0);
         transaction.remove(0);
         FPtree child = null;
@@ -138,6 +143,7 @@ class FPGrowth {
     }
 
     private void linkToHeaderTable(FPtree node, List<FPtree> headerTable) {
+        // link the node to the header table
         for (FPtree headerNode : headerTable) {
             if (headerNode.item.equals(node.item)) {
                 while (headerNode.next != null) {
@@ -150,6 +156,7 @@ class FPGrowth {
     }
 
     private void updateHeaderTableCounts() {
+        // update the counts of the nodes in the header table
         for (FPtree header : headerTable) {
             int count = 0;
             FPtree temp = header.next;
@@ -163,10 +170,12 @@ class FPGrowth {
     }
 
     private FPtree construct_fpTree_cond(Map<String, Integer> conditionalPatternBase, Map<String, Integer> conditionalItemsMaptoFrequencies, float sup, ArrayList<FPtree> conditional_headerTable) {
+        // construct the conditional FP tree
         FPtree conditional_fptree = new FPtree("null");
         conditional_fptree.item = null;
         conditional_fptree.root = true;
 
+        // insert the conditional pattern base into the conditional FP tree over the support threshold
         for (Map.Entry<String, Integer> entry : conditionalPatternBase.entrySet()) {
             String pattern = entry.getKey();
             int patternCount = entry.getValue();
@@ -186,6 +195,7 @@ class FPGrowth {
     }
 
     private void insert_cond(List<String> patternVector, int countOfPattern, FPtree conditionalFptree, ArrayList<FPtree> conditionalHeaderTable) {
+        // insert the conditional pattern into the conditional FP tree
         if (patternVector.isEmpty()) {
             return;
         }
@@ -193,7 +203,7 @@ class FPGrowth {
         String itemToAddToTree = patternVector.remove(0);
         FPtree newNode = findOrCreateChild(conditionalFptree, itemToAddToTree);
         newNode.count += countOfPattern;
-
+        // link the node conditional header table
         if (newNode.parent == null) {
             newNode.parent = conditionalFptree;
             conditionalFptree.children.add(newNode);
@@ -204,6 +214,7 @@ class FPGrowth {
     }
 
     private FPtree findOrCreateChild(FPtree parent, String item) {
+        // find or create a child node
         for (FPtree child : parent.children) {
             if (child.item.equals(item)) {
                 return child;
@@ -213,6 +224,7 @@ class FPGrowth {
     }
 
     private void linkNodeToConditionalHeaderTable(FPtree node, ArrayList<FPtree> conditionalHeaderTable) {
+        // link the node to the conditional header table
         for (FPtree header : conditionalHeaderTable) {
             if (header.item.equals(node.item)) {
                 while (header.next != null) {
@@ -230,16 +242,18 @@ class FPGrowth {
     }
 
     void FPgrowth(FPtree fptree, String base, Float sup, ArrayList<FPtree> headerTable, Map<String, Integer> frequentPatterns) {
+        // mine the frequent patterns
         if (fptree == null || fptree.children.isEmpty()) {
             return;
         }
-
+        
         for (FPtree header : headerTable) {
             String newPattern = base.isEmpty() ? header.item : base + "," + header.item;
             int supportOfCurrentPattern = 0;
 
             Map<String, Integer> conditionalPatternBase = new HashMap<>();
             FPtree temp = header.next;
+            // get the conditional pattern base
             while (temp != null) {
                 supportOfCurrentPattern += temp.count;
                 List<String> path = new ArrayList<>();
@@ -255,11 +269,11 @@ class FPGrowth {
                 }
                 temp = temp.next;
             }
-
+            // add the current pattern to the frequent patterns
             if (supportOfCurrentPattern >= sup) {
                 frequentPatterns.put(newPattern, supportOfCurrentPattern);
             }
-
+            // construct the conditional FP tree
             if (!conditionalPatternBase.isEmpty()) {
                 Map<String, Integer> conditionalItemsMapToFrequencies = new HashMap<>();
                 for (String pattern : conditionalPatternBase.keySet()) {
