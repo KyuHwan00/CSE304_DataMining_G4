@@ -1,4 +1,4 @@
-# DataMining-G4
+# DataMining-Group4
 Group 4 : 이규환, 이동규, 이채은, 황성식
 ___
 ## ⚙️ Develop ENV
