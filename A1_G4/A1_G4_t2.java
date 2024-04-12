@@ -24,7 +24,7 @@ class FPGrowth {
         fpgrowth(fptree, sup, headerTable);
         long time = System.currentTimeMillis() - start;
         print();
-        System.out.println("Execution time is " + time + " milliseconds");
+        // System.out.println("Execution time is " + time + " milliseconds");
     }
 
     private void fptree(File file) throws FileNotFoundException {
