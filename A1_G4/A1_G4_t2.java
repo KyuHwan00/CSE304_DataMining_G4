@@ -4,9 +4,7 @@ import java.util.*;
 public class A1_G4_t2 {
 
     public static void main(String[] args) throws FileNotFoundException {
-        long start = System.currentTimeMillis();
         new FPGrowth(new File(args[0]), Float.parseFloat(args[1]));
-        // System.out.println((System.currentTimeMillis() - start));
     }
 }
 
@@ -19,11 +17,15 @@ class FPGrowth {
 
 
     public FPGrowth(File file, Float sup) throws FileNotFoundException {
+        long start = System.currentTimeMillis();
+
         this.sup = sup; // support threshold
         this.transactionCount = 0;
         fptree(file);
         fpgrowth(fptree, sup, headerTable);
+        long time = System.currentTimeMillis() - start;
         print();
+        System.out.println("Execution time is " + time + " milliseconds");
     }
 
     private void fptree(File file) throws FileNotFoundException {
