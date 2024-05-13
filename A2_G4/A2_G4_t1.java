@@ -1,5 +1,4 @@
 import java.io.*;
-import java.sql.Array;
 import java.util.*;
 
 public class A2_G4_t1 {
