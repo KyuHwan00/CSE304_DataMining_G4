@@ -18,19 +18,19 @@ Move to the `A1_G4` directory that contains java codes and dataset for Assignmen
 cd A1_G4
 ```
 
-### 1-1. Apriori
+### Apriori
 ```bash
 javac A1_G4_t1.java
 java A1_G4_t1 ./groceries.csv 0.05
 ```
-#### Apriori-TID
+### Apriori-TID
 Before Run, change the `exec("TID", inputFile);` in main function and then re-compile.
 ```bash
 javac A1_G4_t1.java
 java A1_G4_t1 ./groceries.csv 0.05
 ```
 
-### 1-2. FP-growth
+### FP-growth
 ```bash
 javac A1_G4_t2.java
 java A1_G4_t2 ./groceries.csv 0.05
@@ -43,15 +43,15 @@ Move to the `A2_G4` directory that contains java codes and dataset for Assignmen
 cd A2_G4
 ```
 
-### 1-1. k-means++
+### k-means++
 ```bash
 javac A2_G4_t1.java
 java A2_G4_t1 ./artd-31.csv 15
 ```
-#### k-means(Random initialization)
+### k-means(Random initialization)
 TBD
 
-### 1-2. DBSCAN
+### DBSCAN
 ```bash
 javac A2_G4_t2.java
 java A2_G4_t2 ./artd-31.csv 15
