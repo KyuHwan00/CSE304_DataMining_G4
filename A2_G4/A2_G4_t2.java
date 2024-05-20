@@ -18,7 +18,9 @@ public class A2_G4_t2 {
                 String flag_arg_1 = checkNumberFormat(args[1]);
                 if (flag_arg_1.equals("int")) {
                     MU = Integer.parseInt(args[1]);
+                    EPSILON = 0.5;
                     EPSILON = estimateEpsilon(inputFilePath, MU);
+                    System.out.println("Estimated epsilon: " + EPSILON);
                     //EPSILON = 0.15; // need to estimate
                 } else if (flag_arg_1.equals("float")) {
                     MU = 10; // need to estimate
@@ -47,8 +49,9 @@ public class A2_G4_t2 {
         exec(inputFilePath);
     }
 
-    private static double estimateEpsilon(String inputFilePath, int mu) {
-        List<Point> points = loadData(inputFilePath);
+    private static double estimateEpsilon(String inputFilePath, int mu) throws IOException {
+        List<Point> points = removeNoise(inputFilePath);
+        //scaleData(points);
 
         int n = points.size();
         List<Double> k_dist = new ArrayList<>();
@@ -56,11 +59,10 @@ public class A2_G4_t2 {
             Point p1 = points.get(i);
             List<Double> distances = new ArrayList<>();
             for (int j = 0; j < n; j++) {
-                if (i == j) {
-                    continue;
+                if (i != j) {
+                    Point p2 = points.get(j);
+                    distances.add(p1.distanceTo(p2));
                 }
-                Point p2 = points.get(j);
-                distances.add(p1.distanceTo(p2));
             }
             Collections.sort(distances);
             double sum = 0;
@@ -70,6 +72,10 @@ public class A2_G4_t2 {
             k_dist.add(sum / mu);
         }
         Collections.sort(k_dist, Comparator.reverseOrder());
+
+//        for (Double d : k_dist) {
+//            System.out.println(d);
+//        }
 
         return k_dist.get(findKneePoint(k_dist));
     }
@@ -98,6 +104,35 @@ public class A2_G4_t2 {
         return kneePointIndex;
     }
 
+    public static void writeCSV(String filePath, List<List<String>> data) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+            for (List<String> row : data) {
+                writer.write(String.join(",", row));
+                writer.newLine();
+            }
+            System.out.println("CSV 파일이 성공적으로 생성되었습니다: " + filePath);
+        } catch (IOException e) {
+            System.err.println("CSV 파일을 생성하는 중 오류가 발생했습니다: " + e.getMessage());
+        }
+    }
+
+    private static List<Point> removeNoise(String inputFilePath) throws IOException {
+        List<Point> points = loadData(inputFilePath);
+        DBSCAN dbscan = new DBSCAN();
+        dbscan.dbscan(points, EPSILON, MU);
+
+        List<Point> newPoints = new ArrayList<>();
+
+        for (Point point : points) {
+            int clusterId = point.getClusterId();
+            if (clusterId != DBSCAN.NOISE) {
+                newPoints.add(point);
+            }
+        }
+
+        return newPoints;
+    }
+
     private static void exec(String inputFilePath) throws IOException {
         List<Point> points = loadData(inputFilePath);
         Date start = new Date();
@@ -123,13 +158,17 @@ public class A2_G4_t2 {
         System.out.println("Number of clusters : " + clusters.size());
         System.out.println("Number of noise : " + noiseCount);
 
+        List<List<String>> data = new ArrayList<>();
+        data.add(Arrays.asList("id", "x", "y", "cluster_id"));
         for (Map.Entry<Integer, List<Point>> entry : clusters.entrySet()) {
             System.out.print("Cluster #" + entry.getKey() + " => ");
             for (Point point : entry.getValue()) {
+                data.add(Arrays.asList(point.getId(), String.valueOf(point.getX()), String.valueOf(point.getY()), String.valueOf(entry.getKey())));
                 System.out.print(point.getId() + " ");
             }
             System.out.println();
         }
+        writeCSV("output.csv", data);
         // System.out.println("Execution time is " + time + " milliseconds");
 
     }
