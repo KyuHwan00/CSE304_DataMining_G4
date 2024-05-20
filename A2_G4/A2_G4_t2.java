@@ -18,7 +18,6 @@ public class A2_G4_t2 {
                 String flag_arg_1 = checkNumberFormat(args[1]);
                 if (flag_arg_1.equals("int")) {
                     MU = Integer.parseInt(args[1]);
-                    EPSILON = 0.5;
                     EPSILON = estimateEpsilon(inputFilePath, MU);
                     System.out.println("Estimated epsilon: " + EPSILON);
                     //EPSILON = 0.15; // need to estimate
@@ -50,8 +49,7 @@ public class A2_G4_t2 {
     }
 
     private static double estimateEpsilon(String inputFilePath, int mu) throws IOException {
-        List<Point> points = removeNoise(inputFilePath);
-        //scaleData(points);
+        List<Point> points = loadData(inputFilePath);
 
         int n = points.size();
         List<Double> k_dist = new ArrayList<>();
@@ -68,12 +66,65 @@ public class A2_G4_t2 {
             k_dist.add(distances.get(mu - 1));
         }
         Collections.sort(k_dist, Comparator.reverseOrder());
-
-//        for (Double d : k_dist) {
-//            System.out.println(d);
+//        for (int i=0; i<k_dist.size(); i++) {
+//            System.out.println(k_dist.get(i));
 //        }
 
-        return k_dist.get(findKneePoint(k_dist));
+        List<Double> new_k_dist = k_dist.subList(findSteepestPoint(k_dist), k_dist.size());
+
+//        for (int i=0; i<new_k_dist.size(); i++) {
+//            System.out.println("k_dist : " + new_k_dist.get(i) + ", index : " + i);
+//        }
+
+        return new_k_dist.get(findKneePoint(new_k_dist));
+    }
+
+//    private static List<Point> scaleData(List<Point> points) {
+//        List<Point> scaledPoints = new ArrayList<>();
+//        double sumX = 0, sumY = 0;
+//        for (Point point : points) {
+//            sumX += point.x;
+//            sumY += point.y;
+//        }
+//        double meanX = sumX / points.size();
+//        double meanY = sumY / points.size();
+//
+//        double sumSqX = 0, sumSqY = 0;
+//        for (Point point : points) {
+//            sumSqX += Math.pow(point.x - meanX, 2);
+//            sumSqY += Math.pow(point.y - meanY, 2);
+//        }
+//        double stdX = Math.sqrt(sumSqX / points.size());
+//        double stdY = Math.sqrt(sumSqY / points.size());
+//
+//        for (Point point : points) {
+//            double new_x = (point.x - meanX) / stdX;
+//            double new_y = (point.y - meanY) / stdY;
+//            scaledPoints.add(new Point(point.id, new_x, new_y));
+//        }
+//
+//         return scaledPoints;
+//    }
+
+    public static int findSteepestPoint(List<Double> k_dist) {
+        int n = k_dist.size();
+        // 기울기의 변화량을 저장할 배열
+
+        double maxSlopeChange = 0;
+        int maxSlopeChangeIndex = 0;
+
+        // 기울기의 변화를 계산
+        for (int i = 1; i < n - 1; i++) {
+            double slopeLeft = (k_dist.get(i-1) - k_dist.get(i))/(k_dist.get(i-1) + k_dist.get(i));
+            //System.out.println("slope : " + (slopeLeft) + ", index : " + i);
+            if (maxSlopeChange < (slopeLeft)) {
+                maxSlopeChange = slopeLeft;
+                maxSlopeChangeIndex = i;
+            }
+        }
+
+        //System.out.println("max : " + maxSlopeChange + ", index : " + maxSlopeChangeIndex);
+        return maxSlopeChangeIndex;
     }
 
     private static int findKneePoint(List<Double> sortedKDists) {
@@ -112,22 +163,23 @@ public class A2_G4_t2 {
         }
     }
 
-    private static List<Point> removeNoise(String inputFilePath) throws IOException {
-        List<Point> points = loadData(inputFilePath);
-        DBSCAN dbscan = new DBSCAN();
-        dbscan.dbscan(points, EPSILON, MU);
-
-        List<Point> newPoints = new ArrayList<>();
-
-        for (Point point : points) {
-            int clusterId = point.getClusterId();
-            if (clusterId != DBSCAN.NOISE) {
-                newPoints.add(point);
-            }
-        }
-
-        return newPoints;
-    }
+//    private static List<Point> removeNoise(String inputFilePath) throws IOException {
+//        List<Point> points = loadData(inputFilePath);
+//        List<Point> scaledPoints = scaleData(points);
+//        DBSCAN dbscan = new DBSCAN();
+//        dbscan.dbscan(scaledPoints, EPSILON, MU);
+//
+//        List<Point> newPoints = new ArrayList<>();
+//
+//        for (int i=0; i<points.size(); i++) {
+//            int clusterId = scaledPoints.get(i).getClusterId();
+//            if (clusterId != DBSCAN.NOISE) {
+//                newPoints.add(points.get(i));
+//            }
+//        }
+//
+//        return newPoints;
+//    }
 
     private static void exec(String inputFilePath) throws IOException {
         List<Point> points = loadData(inputFilePath);
