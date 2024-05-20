@@ -23,7 +23,7 @@ public class A2_G4_t2 {
                     System.out.println("Estimated epsilon: " + EPSILON);
                     //EPSILON = 0.15; // need to estimate
                 } else if (flag_arg_1.equals("float")) {
-                    MU = 10; // need to estimate
+                    MU = 4; // need to estimate
                     EPSILON = Double.parseDouble(args[1]);
                 } else {
                     System.out.println("Invalid input");
@@ -65,11 +65,7 @@ public class A2_G4_t2 {
                 }
             }
             Collections.sort(distances);
-            double sum = 0;
-            for (int j = 0; j < mu; j++) {
-                sum += distances.get(j);
-            }
-            k_dist.add(sum / mu);
+            k_dist.add(distances.get(mu - 1));
         }
         Collections.sort(k_dist, Comparator.reverseOrder());
 
