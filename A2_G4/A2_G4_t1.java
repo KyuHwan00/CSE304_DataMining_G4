@@ -3,18 +3,19 @@ import java.util.*;
 
 public class A2_G4_t1 {
     static int n_clusters;
+    static String kMeansInitFlag = "k-means++"; // or, "random"
 
     public static void main(String[] args) throws IOException {
         String inputFilePath = args[0];
 
         if (args.length < 2) {
-//            n_clusters = estimate_k();
-            n_clusters = 15; // estimate_k 구현 전까지는 임의로 지정
+
+            n_clusters =estimateK(dataLoader(inputFilePath));
             System.out.println("estimated k: " + n_clusters);
         } else {
             n_clusters = Integer.parseInt(args[1]);
         }
-        exec(inputFilePath, "k-means++");
+        exec(inputFilePath, kMeansInitFlag);
     }
 
     private static void exec(String inputFilePath, String initFlag) throws IOException {
@@ -53,14 +54,6 @@ public class A2_G4_t1 {
         return points;
     }
 
-    public static int estimate_k(){
-        int k_proper;
-
-        k_proper = 0;
-
-        return k_proper;
-    }
-
     public static void printResult(List<Cluster> result) {
         result.sort(Comparator.comparing(Cluster::getClusterId));
         int clusterIndex = 0;
@@ -70,11 +63,59 @@ public class A2_G4_t1 {
             System.out.println(output);
         }
     }
+
+    public static int estimateK(List<Point> dataset) {
+        int maxK = (int) Math.sqrt(dataset.size()/2);
+        KMeans kmeans = new KMeans();
+
+        int bestK = 1;
+
+        double bestBICScore = Double.POSITIVE_INFINITY;
+        double currentBICScore;
+
+
+        int k = 1;
+        while (k < maxK) {
+            List<Cluster> clusters = kmeans.clustering(k, kMeansInitFlag, dataset);
+
+            int numParameters = k * (dataset.get(0).getCoordinates().length + 1) * 2 + k - 1;
+            currentBICScore = calculateBIC(clusters, numParameters);
+
+            System.out.println("k: " + k + ", BIC: " + currentBICScore + ", bestBICScore: " + bestBICScore);
+            if (currentBICScore < bestBICScore) {
+                bestK = k;
+                bestBICScore = currentBICScore;
+            }
+            k++;
+        }
+        return bestK;
+    }
+
+    public static double calculateBIC(List<Cluster> clusters, int numParameters) {
+        double logLikelihood = 0;
+        int numDataPoints = 0;
+        for (Cluster cluster : clusters) {
+            numDataPoints += cluster.getPoints().size();
+            double clusterVariance = cluster.getVariance();
+            if (clusterVariance == 0) clusterVariance = 1e-10;  // 0 분산 회피
+            for (Point p : cluster.getPoints()) {
+                logLikelihood += -0.5 * Math.log(2 * Math.PI * clusterVariance);
+                double[] coords = p.getCoordinates();
+                double[] mean = cluster.getCentroid();
+                for (int i = 0; i < mean.length; i++) {
+                    logLikelihood -= Math.pow(coords[i] - mean[i], 2) / (2 * clusterVariance);
+                }
+            }
+        }
+
+        double bic = -2 * logLikelihood + numParameters * Math.log(numDataPoints);
+        return bic;
+    }
 }
 
 class Point {
-    private String id;
-    private double[] coordinates;
+    private final String id;
+    private final double[] coordinates;
     private int clusterId;
 
     public Point(String id, double[] coordinates) {
@@ -106,7 +147,7 @@ class Point {
 }
 
 class Cluster {
-    private int clusterId;
+    private final int clusterId;
     private double[] centroid;
     private List<Point> clusterPoints;
 
@@ -124,9 +165,8 @@ class Cluster {
         return centroid;
     }
 
-    public double[] setCentroid(double[] centroid) {
+    public void setCentroid(double[] centroid) {
         this.centroid = centroid;
-        return centroid;
     }
 
     public double[] recalculateCentroid() {
@@ -147,25 +187,36 @@ class Cluster {
     }
 
     public void addPoint(Point point) {
-        clusterPoints.add(point);
+        this.clusterPoints.add(point);
     }
 
     public void removePoint(Point point) {
-        clusterPoints.remove(point);
+        this.clusterPoints.remove(point);
     }
 
     public void removePointById(String id) {
-        clusterPoints.removeIf(p -> p.getId().equals(id));
+        this.clusterPoints.removeIf(p -> p.getId().equals(id));
     }
 
     public String toString() {
         String output = "";
         clusterPoints.sort(Comparator.comparing(Point::getNumberId));
 
-        for (Point point : clusterPoints) {
-            output += point.getId() + " ";
-        }
+        for (Point point : clusterPoints) output += point.getId() + " ";
         return output;
+    }
+
+    public double getVariance() {
+        int dimension = centroid.length;
+        double variance = 0.0;
+        for (Point p : clusterPoints) {
+            double[] coords = p.getCoordinates();
+            for (int i = 0; i < dimension; i++) {
+                variance += Math.pow(coords[i] - centroid[i], 2);
+            }
+        }
+        variance /= clusterPoints.size() * dimension;
+        return variance;
     }
 }
 
@@ -190,24 +241,19 @@ class KMeans {
 
         initialization(initFlag, k);
 
-        while (!isFinished()) {
-            updateClusterAssignments();
-            updateCentroids();
-        }
+        clusteringHelper();
 
         return clusters;
     }
 
-    private double getDistanceOfPoints(Point p1, Point p2) { // 나중에 제곱을 l제곱으로 변경해서 generalize할 수 있음
-        double sumSquaredDiffs = 0.0;
-        for (int i = 0; i < p1.getCoordinates().length; i++) {
-            double diff = p1.getCoordinates()[i] - p2.getCoordinates()[i];
-            sumSquaredDiffs += diff * diff;
+    public void clusteringHelper() {
+        while (!isFinished()) {
+            updateClusterAssignments();
+            updateCentroids();
         }
-        return sumSquaredDiffs;
     }
 
-    private double getDistanceOfCoordinates(double[] p1, double[] p2) { // 나중에 제곱을 l제곱으로 변경해서 generalize할 수 있음
+    public double getDistanceOfCoordinates(double[] p1, double[] p2) { // 나중에 제곱을 l제곱으로 변경해서 generalize할 수 있음
         double sumSquaredDiffs = 0.0;
         for (int i = 0; i < p1.length; i++) {
             double diff = p1[i] - p2[i];
@@ -218,6 +264,10 @@ class KMeans {
 
     private void initialization(String initFlag, int n_clusters) {
         int seed = 12345;
+        this.clusters = new ArrayList<>();
+        this.previousCentroids = new ArrayList<>();
+        this.currentCentroids = new ArrayList<>();
+
         if (initFlag.equals("k-means++")) {
             KMeansPlusPlus(n_clusters, seed);
         } else if (initFlag.equals("random")) {
@@ -308,7 +358,7 @@ class KMeans {
         }
     }
 
-    private List<double[]> updateCentroids() {
+    private void updateCentroids() {
         previousCentroids = new ArrayList<>(currentCentroids);
         List<double[]> centroids = new ArrayList<>();
 
@@ -317,7 +367,6 @@ class KMeans {
         }
 
         currentCentroids = centroids;
-        return centroids;
     }
 
     private boolean isFinished(){
@@ -342,4 +391,12 @@ class KMeans {
         return true;
     }
 
+
+    public List<Cluster> getClusters() {
+        return clusters;
+    }
+
+    public List<double[]> getCentroids() {
+        return currentCentroids;
+    }
 }
