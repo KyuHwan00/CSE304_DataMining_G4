@@ -10,7 +10,7 @@ public class A2_G4_t1 {
 
         if (args.length < 2) {
 
-            n_clusters =estimateK(dataLoader(inputFilePath));
+            n_clusters = estimateK(dataLoader(inputFilePath));
             System.out.println("estimated k: " + n_clusters);
         } else {
             n_clusters = Integer.parseInt(args[1]);
@@ -64,52 +64,127 @@ public class A2_G4_t1 {
         }
     }
 
+    //BIC
+//    public static int estimateK(List<Point> dataset) {
+//        int maxK = (int) Math.sqrt(dataset.size()/2);
+//        KMeans kmeans = new KMeans();
+//
+//        int bestK = 1;
+//
+//        double bestBICScore = Double.POSITIVE_INFINITY;
+//        double currentBICScore;
+//
+//
+//        int k = 1;
+//        while (k < maxK) {
+//            for (Point point : dataset) {
+//                point.setClusterId(-1);
+//            }
+//            List<Cluster> clusters = kmeans.clustering(k, kMeansInitFlag, dataset);
+//            //printResult(clusters);
+//
+//            int numParameters = k * (dataset.get(0).getCoordinates().length + 1) * 2 + k - 1;
+//            currentBICScore = calculateBIC(clusters, numParameters);
+//
+//            System.out.println("k: " + k + ", BIC: " + currentBICScore + ", bestBICScore: " + bestBICScore);
+//            if (currentBICScore < bestBICScore) {
+//                bestK = k;
+//                bestBICScore = currentBICScore;
+//            }
+//            k++;
+//        }
+//        return bestK;
+//    }
+//
+//    public static double calculateBIC(List<Cluster> clusters, int numParameters) {
+//        double logLikelihood = 0;
+//        int numDataPoints = 0;
+//        for (Cluster cluster : clusters) {
+//            numDataPoints += cluster.getPoints().size();
+//            double clusterVariance = cluster.getVariance();
+//            if (clusterVariance == 0) clusterVariance = 1e-10;  // 0 분산 회피
+//            for (Point p : cluster.getPoints()) {
+//                logLikelihood += -0.5 * Math.log(2 * Math.PI * clusterVariance);
+//                double[] coords = p.getCoordinates();
+//                double[] mean = cluster.getCentroid();
+//                for (int i = 0; i < mean.length; i++) {
+//                    logLikelihood -= Math.pow(coords[i] - mean[i], 2) / (2 * clusterVariance);
+//                }
+//            }
+//        }
+//
+//        double bic = -2 * logLikelihood + numParameters * Math.log(numDataPoints);
+//        return bic;
+//    }
+
+    //silhouette
     public static int estimateK(List<Point> dataset) {
-        int maxK = (int) Math.sqrt(dataset.size()/2);
+        int maxK = (int) Math.sqrt(dataset.size() / 2);
         KMeans kmeans = new KMeans();
 
         int bestK = 1;
+        double bestSilhouetteScore = -1;
 
-        double bestBICScore = Double.POSITIVE_INFINITY;
-        double currentBICScore;
-
-
-        int k = 1;
+        int k = 2;
         while (k < maxK) {
+            for (Point point : dataset) {
+                point.setClusterId(-1);
+            }
+
             List<Cluster> clusters = kmeans.clustering(k, kMeansInitFlag, dataset);
+            //printResult(clusters);
 
-            int numParameters = k * (dataset.get(0).getCoordinates().length + 1) * 2 + k - 1;
-            currentBICScore = calculateBIC(clusters, numParameters);
+            // Compute silhouette score
+            double silhouetteScore = calculateSilhouetteScore(clusters, dataset);
 
-            System.out.println("k: " + k + ", BIC: " + currentBICScore + ", bestBICScore: " + bestBICScore);
-            if (currentBICScore < bestBICScore) {
+            System.out.println("k: " + k + ", Silhouette Score: " + silhouetteScore + ", Best Silhouette Score: " + bestSilhouetteScore);
+            if (silhouetteScore > bestSilhouetteScore) {
                 bestK = k;
-                bestBICScore = currentBICScore;
+                bestSilhouetteScore = silhouetteScore;
             }
             k++;
         }
         return bestK;
     }
 
-    public static double calculateBIC(List<Cluster> clusters, int numParameters) {
-        double logLikelihood = 0;
-        int numDataPoints = 0;
-        for (Cluster cluster : clusters) {
-            numDataPoints += cluster.getPoints().size();
-            double clusterVariance = cluster.getVariance();
-            if (clusterVariance == 0) clusterVariance = 1e-10;  // 0 분산 회피
-            for (Point p : cluster.getPoints()) {
-                logLikelihood += -0.5 * Math.log(2 * Math.PI * clusterVariance);
-                double[] coords = p.getCoordinates();
-                double[] mean = cluster.getCentroid();
-                for (int i = 0; i < mean.length; i++) {
-                    logLikelihood -= Math.pow(coords[i] - mean[i], 2) / (2 * clusterVariance);
+    private static double calculateSilhouetteScore(List<Cluster> clusters, List<Point> dataset) {
+        double totalSilhouetteScore = 0.0;
+        int totalPoints = dataset.size();
+
+        for (Point point : dataset) {
+            Cluster currentCluster = null;
+            for (Cluster c : clusters) {
+                if (c.getPoints().contains(point)) {
+                    currentCluster = c;
+                    break;
                 }
             }
+            double a = averageDistanceToCluster(point, currentCluster);
+            double b = clusters.stream().filter(c -> !c.getPoints().contains(point))
+                    .mapToDouble(c -> averageDistanceToCluster(point, c))
+                    .min().orElse(Double.MAX_VALUE);
+
+            double silhouette = (b - a) / Math.max(a, b);
+            totalSilhouetteScore += silhouette;
         }
 
-        double bic = -2 * logLikelihood + numParameters * Math.log(numDataPoints);
-        return bic;
+        return totalSilhouetteScore / totalPoints;
+    }
+
+    private static double averageDistanceToCluster(Point point, Cluster cluster) {
+        return cluster.getPoints().stream()
+                .mapToDouble(p -> distance(point, p))
+                .average().orElse(Double.MAX_VALUE);
+    }
+
+    private static double distance(Point p1, Point p2) {
+        double[] p1Coordinates = p1.getCoordinates();
+        double[] p2Coordinates = p2.getCoordinates();
+        double sum = 0.0;
+        for (int i = 0; i < p1Coordinates.length; i++) {
+            sum += Math.pow(p1Coordinates[i] - p2Coordinates[i], 2);
+        }
+        return Math.sqrt(sum);
     }
 }
 
@@ -320,7 +395,7 @@ class KMeans {
                 totalDist += shortestDist;
             }
 
-            double randomValue = random.nextDouble(1) * totalDist;
+            double randomValue = random.nextDouble() * totalDist;
             for (int i = 0; i < distances.length; i++) {
                 randomValue -= distances[i];
                 if (randomValue <= 0) {
