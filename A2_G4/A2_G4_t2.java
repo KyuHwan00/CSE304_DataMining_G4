@@ -319,18 +319,17 @@ public class A2_G4_t2 {
         public static final int UNCLASSIFIED = -1;
         public static final int NOISE = 0;
 
-        public static int CLUSTER_ID = 0;
+        public static int CLUSTER_ID = 1;
 
-        private static int nextId() {
-            return CLUSTER_ID++;
+        private static void increase_Cluster_ID() {
+            CLUSTER_ID++;
         }
 
         public void dbscan(List<Point> setOfPoints, double eps, int minPts) {
-            int clusterId = nextId();
             for (Point point : setOfPoints) {
                 if (point.getClusterId() == UNCLASSIFIED) {
-                    if (expandCluster(setOfPoints, point, clusterId, eps, minPts)) {
-                        clusterId = nextId();
+                    if (expandCluster(setOfPoints, point, CLUSTER_ID, eps, minPts)) {
+                        increase_Cluster_ID();
                     }
                 }
             }
