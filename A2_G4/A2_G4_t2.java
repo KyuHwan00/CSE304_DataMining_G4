@@ -7,6 +7,10 @@ public class A2_G4_t2 {
     static int MU;
     static double EPSILON;
     static int noise_count = 0;
+    static List<Double> epsilons = new ArrayList<>();
+    static int splitNum = 0;
+    static List<List<Map.Entry<Double, Point>>> splitList = new ArrayList<>();
+    static List<List<Point>> splitPoints = new ArrayList<>();
     public static void main(String[] args) throws IOException {
         String inputFilePath = args[0];
         // set mu and epsilon according to args
@@ -18,8 +22,8 @@ public class A2_G4_t2 {
                 String flag_arg_1 = checkNumberFormat(args[1]);
                 if (flag_arg_1.equals("int")) {
                     MU = Integer.parseInt(args[1]);
-                    EPSILON = estimateEpsilon(inputFilePath, MU);
-                    System.out.println("Estimated epsilon: " + EPSILON);
+                    epsilons = estimateEpsilon(inputFilePath, MU, splitNum);
+                    EPSILON = epsilons.get(0);
                     //EPSILON = 0.15; // need to estimate
                 } else if (flag_arg_1.equals("float")) {
                     MU = 4; // need to estimate
@@ -39,6 +43,11 @@ public class A2_G4_t2 {
             } else if (flag_arg_1.equals("float") && flag_arg_2.equals("int")) {
                 MU = Integer.parseInt(args[2]);
                 EPSILON = Double.parseDouble(args[1]);
+            } else if (flag_arg_1.equals("int") && args[2].startsWith("s=")) {
+                splitNum = Integer.parseInt(args[2].substring(2));
+                MU = Integer.parseInt(args[1]);
+                epsilons = estimateEpsilon(inputFilePath, MU, splitNum);
+                EPSILON = epsilons.get(0);
             } else {
                 System.out.println("Invalid input");
                 return;
@@ -48,11 +57,11 @@ public class A2_G4_t2 {
         exec(inputFilePath);
     }
 
-    private static double estimateEpsilon(String inputFilePath, int mu) throws IOException {
+    private static List<Double> estimateEpsilon(String inputFilePath, int mu, int splitNum) throws IOException {
         List<Point> points = loadData(inputFilePath);
 
         int n = points.size();
-        List<Double> k_dist = new ArrayList<>();
+        List<Map.Entry<Double, Point>> k_dist = new ArrayList<>();
         for (int i = 0; i < n; i++) {
             Point p1 = points.get(i);
             List<Double> distances = new ArrayList<>();
@@ -63,81 +72,92 @@ public class A2_G4_t2 {
                 }
             }
             Collections.sort(distances);
-            k_dist.add(distances.get(mu - 1));
+            k_dist.add(new AbstractMap.SimpleEntry<>(distances.get(mu - 1), p1));
         }
-        Collections.sort(k_dist, Comparator.reverseOrder());
+        Collections.sort(k_dist, new Comparator<Map.Entry<Double, Point>>() {
+            @Override
+            public int compare(Map.Entry<Double, Point> e1, Map.Entry<Double, Point> e2) {
+                return Double.compare(e2.getKey(), e1.getKey());
+            }
+        });
 //        for (int i=0; i<k_dist.size(); i++) {
 //            System.out.println(k_dist.get(i));
 //        }
+        List<Double> result = new ArrayList<>();
+        if (splitNum == 0) {
+            result.add(k_dist.get(findKneePoint(k_dist)).getKey());
+            return result;
+        }
+        splitList = splitKDist(k_dist, splitNum);
 
-        List<Double> new_k_dist = k_dist.subList(findSteepestPoint(k_dist), k_dist.size());
+        for (List<Map.Entry<Double, Point>> k_dist_split : splitList) {
+            List<Point> pointList = new ArrayList<>();
+            for (Map.Entry<Double, Point> m : k_dist_split) {
+                pointList.add(m.getValue());
+            }
+            splitPoints.add(pointList);
+            result.add(k_dist_split.get(findKneePoint(k_dist_split)).getKey());
+        }
 
-//        for (int i=0; i<new_k_dist.size(); i++) {
-//            System.out.println("k_dist : " + new_k_dist.get(i) + ", index : " + i);
-//        }
-
-        return new_k_dist.get(findKneePoint(new_k_dist));
+        return result;
     }
 
-//    private static List<Point> scaleData(List<Point> points) {
-//        List<Point> scaledPoints = new ArrayList<>();
-//        double sumX = 0, sumY = 0;
-//        for (Point point : points) {
-//            sumX += point.x;
-//            sumY += point.y;
-//        }
-//        double meanX = sumX / points.size();
-//        double meanY = sumY / points.size();
-//
-//        double sumSqX = 0, sumSqY = 0;
-//        for (Point point : points) {
-//            sumSqX += Math.pow(point.x - meanX, 2);
-//            sumSqY += Math.pow(point.y - meanY, 2);
-//        }
-//        double stdX = Math.sqrt(sumSqX / points.size());
-//        double stdY = Math.sqrt(sumSqY / points.size());
-//
-//        for (Point point : points) {
-//            double new_x = (point.x - meanX) / stdX;
-//            double new_y = (point.y - meanY) / stdY;
-//            scaledPoints.add(new Point(point.id, new_x, new_y));
-//        }
-//
-//         return scaledPoints;
-//    }
-
-    public static int findSteepestPoint(List<Double> k_dist) {
+    public static List<List<Map.Entry<Double, Point>>> splitKDist(List<Map.Entry<Double, Point>> k_dist, int splitNum) {
         int n = k_dist.size();
-        // 기울기의 변화량을 저장할 배열
 
-        double maxSlopeChange = 0;
-        int maxSlopeChangeIndex = 0;
+        List<Map.Entry<Double, Integer>> distChange = new ArrayList<>();
 
-        // 기울기의 변화를 계산
         for (int i = 1; i < n - 1; i++) {
-            double slopeLeft = (k_dist.get(i-1) - k_dist.get(i))/(k_dist.get(i-1) + k_dist.get(i));
+            double distGap = (k_dist.get(i-1).getKey() - k_dist.get(i).getKey())/(k_dist.get(i-1).getKey() + k_dist.get(i).getKey());
             //System.out.println("slope : " + (slopeLeft) + ", index : " + i);
-            if (maxSlopeChange < (slopeLeft)) {
-                maxSlopeChange = slopeLeft;
-                maxSlopeChangeIndex = i;
+            distChange.add(new AbstractMap.SimpleEntry<>(distGap, i));
+        }
+
+        Collections.sort(distChange, new Comparator<Map.Entry<Double, Integer>>() {
+            @Override
+            public int compare(Map.Entry<Double, Integer> e1, Map.Entry<Double, Integer> e2) {
+                return Double.compare(e2.getKey(), e1.getKey());
+            }
+        });
+
+        List<Integer> splitIndex = new ArrayList<>();
+        for (int i=0; i<splitNum-1; i++) {
+            splitIndex.add(distChange.get(i).getValue());
+        }
+        Collections.sort(splitIndex);
+
+        return splitListByIndices(k_dist, splitIndex);
+    }
+
+    public static List<List<Map.Entry<Double, Point>>> splitListByIndices(List<Map.Entry<Double, Point>> k_dist, List<Integer> indices) {
+        List<List<Map.Entry<Double, Point>>> result = new ArrayList<>();
+
+        int previousIndex = 0;
+        for (int index : indices) {
+            if (index > previousIndex && index <= k_dist.size()) {
+                result.add(new ArrayList<>(k_dist.subList(previousIndex, index)));
+                previousIndex = index;
             }
         }
 
-        //System.out.println("max : " + maxSlopeChange + ", index : " + maxSlopeChangeIndex);
-        return maxSlopeChangeIndex;
+        if (previousIndex < k_dist.size()) {
+            result.add(new ArrayList<>(k_dist.subList(previousIndex, k_dist.size())));
+        }
+
+        return result;
     }
 
-    private static int findKneePoint(List<Double> sortedKDists) {
+    private static int findKneePoint(List<Map.Entry<Double, Point>> sortedKDists) {
         int n = sortedKDists.size();
 
-        double x1 = 0, y1 = sortedKDists.get(0);
-        double x2 = n - 1, y2 = sortedKDists.get(n - 1);
+        double x1 = 0, y1 = sortedKDists.get(0).getKey();
+        double x2 = n - 1, y2 = sortedKDists.get(n - 1).getKey();
 
         double maxDistance = -1;
         int kneePointIndex = 0;
 
         for (int i = 1; i < n - 1; i++) {
-            double x0 = i, y0 = sortedKDists.get(i);
+            double x0 = i, y0 = sortedKDists.get(i).getKey();
 
             double distance = Math.abs((y2 - y1) * x0 - (x2 - x1) * y0 + x2 * y1 - y2 * x1) /
                     Math.sqrt(Math.pow(y2 - y1, 2) + Math.pow(x2 - x1, 2));
@@ -163,29 +183,20 @@ public class A2_G4_t2 {
         }
     }
 
-//    private static List<Point> removeNoise(String inputFilePath) throws IOException {
-//        List<Point> points = loadData(inputFilePath);
-//        List<Point> scaledPoints = scaleData(points);
-//        DBSCAN dbscan = new DBSCAN();
-//        dbscan.dbscan(scaledPoints, EPSILON, MU);
-//
-//        List<Point> newPoints = new ArrayList<>();
-//
-//        for (int i=0; i<points.size(); i++) {
-//            int clusterId = scaledPoints.get(i).getClusterId();
-//            if (clusterId != DBSCAN.NOISE) {
-//                newPoints.add(points.get(i));
-//            }
-//        }
-//
-//        return newPoints;
-//    }
-
     private static void exec(String inputFilePath) throws IOException {
-        List<Point> points = loadData(inputFilePath);
         Date start = new Date();
         DBSCAN dbscan = new DBSCAN();
-        dbscan.dbscan(points, EPSILON, MU);
+        List<Point> points = new ArrayList<>();
+        if (splitNum == 0) {
+            points = loadData(inputFilePath);
+            dbscan.dbscan(points, EPSILON, MU);
+        } else {
+            for (int i=0; i<splitNum; i++) {
+                List<Point> split_points = splitPoints.get(i);
+                dbscan.dbscan(split_points, epsilons.get(i), MU);
+                points.addAll(split_points);
+            }
+        }
         // to do: implement DBSCAN
         
         Date end = new Date();
@@ -308,16 +319,18 @@ public class A2_G4_t2 {
         public static final int UNCLASSIFIED = -1;
         public static final int NOISE = 0;
 
-        private int nextId(int currentId) {
-            return currentId + 1;
+        public static int CLUSTER_ID = 0;
+
+        private static int nextId() {
+            return CLUSTER_ID++;
         }
 
         public void dbscan(List<Point> setOfPoints, double eps, int minPts) {
-            int clusterId = nextId(NOISE);
+            int clusterId = nextId();
             for (Point point : setOfPoints) {
                 if (point.getClusterId() == UNCLASSIFIED) {
                     if (expandCluster(setOfPoints, point, clusterId, eps, minPts)) {
-                        clusterId = nextId(clusterId);
+                        clusterId = nextId();
                     }
                 }
             }
