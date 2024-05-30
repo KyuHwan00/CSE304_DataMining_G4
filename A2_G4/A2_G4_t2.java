@@ -24,10 +24,12 @@ public class A2_G4_t2 {
                     MU = Integer.parseInt(args[1]);
                     epsilons = estimateEpsilon(inputFilePath, MU, splitNum);
                     EPSILON = epsilons.get(0);
+                    System.out.println("Estimated eps : " + EPSILON);
                     //EPSILON = 0.15; // need to estimate
                 } else if (flag_arg_1.equals("float")) {
                     MU = 4; // need to estimate
                     EPSILON = Double.parseDouble(args[1]);
+                    System.out.println("Estimated MinPts : " + MU);
                 } else {
                     System.out.println("Invalid input");
                     return;
@@ -48,6 +50,11 @@ public class A2_G4_t2 {
                 MU = Integer.parseInt(args[1]);
                 epsilons = estimateEpsilon(inputFilePath, MU, splitNum);
                 EPSILON = epsilons.get(0);
+                System.out.print("Estimated eps : ");
+                for (Double d : epsilons) {
+                    System.out.print(d + " ");
+                }
+                System.out.println();
             } else {
                 System.out.println("Invalid input");
                 return;
@@ -217,17 +224,13 @@ public class A2_G4_t2 {
         System.out.println("Number of clusters : " + clusters.size());
         System.out.println("Number of noise : " + noiseCount);
 
-        List<List<String>> data = new ArrayList<>();
-        data.add(Arrays.asList("id", "x", "y", "cluster_id"));
         for (Map.Entry<Integer, List<Point>> entry : clusters.entrySet()) {
             System.out.print("Cluster #" + entry.getKey() + " => ");
             for (Point point : entry.getValue()) {
-                data.add(Arrays.asList(point.getId(), String.valueOf(point.getX()), String.valueOf(point.getY()), String.valueOf(entry.getKey())));
                 System.out.print(point.getId() + " ");
             }
             System.out.println();
         }
-        writeCSV("output.csv", data);
         // System.out.println("Execution time is " + time + " milliseconds");
 
     }
