@@ -270,7 +270,7 @@ class KMeans {
                 totalDist += shortestDist;
             }
 
-            double randomValue = random.nextDouble(1) * totalDist;
+            double randomValue = random.nextDouble() * totalDist;
             for (int i = 0; i < distances.length; i++) {
                 randomValue -= distances[i];
                 if (randomValue <= 0) {
