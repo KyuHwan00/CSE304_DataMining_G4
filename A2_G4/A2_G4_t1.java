@@ -28,7 +28,7 @@ public class A2_G4_t1 {
 
         Date end = new Date();
         long time = end.getTime() - start.getTime();
-        writeClustersToCSV(result, "./output/output.csv");
+//        writeClustersToCSV(result, "./output/output.csv");
         printResult(result);
         // System.out.println(calculatePhi(result));
         // System.out.println("Execution time is " + time + " milliseconds");
@@ -120,7 +120,7 @@ public class A2_G4_t1 {
 
             currentBICScore = calculateBIC(clusters, k);
 
-            System.out.println("k: " + k + ", BIC Score: " + currentBICScore + ", Best BIC Score: " + bestBICScore);
+//            System.out.println("k: " + k + ", BIC Score: " + currentBICScore + ", Best BIC Score: " + bestBICScore);
             if (currentBICScore < bestBICScore) {
                 bestK = k;
                 bestBICScore = currentBICScore;
