@@ -30,6 +30,7 @@ public class A2_G4_t1 {
         long time = end.getTime() - start.getTime();
         writeClustersToCSV(result, "./output/output.csv");
         printResult(result);
+        // System.out.println(calculatePhi(result));
         // System.out.println("Execution time is " + time + " milliseconds");
     }
 
@@ -63,6 +64,18 @@ public class A2_G4_t1 {
             output += cluster.toString();
             System.out.println(output);
         }
+    }
+
+    public static double calculatePhi(List<Cluster> result) {
+        double phi = 0.0;
+        KMeans kmeans = new KMeans();
+
+        for (Cluster cluster : result) {
+            for (Point p : cluster.getPoints()) {
+                phi += kmeans.getDistanceOfCoordinates(p.getCoordinates(), cluster.getCentroid());
+            }
+        }
+        return phi;
     }
 
     public static void writeClustersToCSV(List<Cluster> clusters, String filePath) {
