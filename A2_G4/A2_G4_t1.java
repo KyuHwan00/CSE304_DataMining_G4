@@ -382,7 +382,7 @@ class KMeans {
         }
     }
 
-    public double getDistanceOfCoordinates(double[] p1, double[] p2) { // 나중에 제곱을 l제곱으로 변경해서 generalize할 수 있음
+    public double getDistanceOfCoordinates(double[] p1, double[] p2) { // Later, you can generalize by changing square to l square.
         // Calculates the squared Euclidean distance between two points.
         double sumSquaredDiffs = 0.0;
         for (int i = 0; i < p1.length; i++) {
