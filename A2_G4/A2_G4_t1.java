@@ -9,7 +9,6 @@ public class A2_G4_t1 {
         String inputFilePath = args[0];
 
         if (args.length < 2) {
-
             n_clusters = estimateK(dataLoader(inputFilePath));
             System.out.println("estimated k: " + n_clusters);
         } else {
@@ -30,8 +29,8 @@ public class A2_G4_t1 {
         long time = end.getTime() - start.getTime();
 //        writeClustersToCSV(result, "./output/output.csv");
         printResult(result);
-        // System.out.println(calculatePhi(result));
-        // System.out.println("Execution time is " + time + " milliseconds");
+//         System.out.println(calculatePhi(result));
+//         System.out.println("Execution time is " + time + " milliseconds");
     }
 
     public static List<Point> dataLoader(String filePath) {
@@ -66,40 +65,40 @@ public class A2_G4_t1 {
         }
     }
 
-    public static double calculatePhi(List<Cluster> result) {
-        double phi = 0.0;
-        KMeans kmeans = new KMeans();
-
-        for (Cluster cluster : result) {
-            for (Point p : cluster.getPoints()) {
-                phi += kmeans.getDistanceOfCoordinates(p.getCoordinates(), cluster.getCentroid());
-            }
-        }
-        return phi;
-    }
-
-    public static void writeClustersToCSV(List<Cluster> clusters, String filePath) {
-        try {
-            File file = new File(filePath);
-            file.getParentFile().mkdirs(); // Create the directory if it does not exist
-            file.createNewFile(); // Create the file if it does not exist
-
-            try (PrintWriter writer = new PrintWriter(file)) {
-                // Write the header
-                writer.println("point_id,x_coordinate,y_coordinate,cluster_id");
-
-                // Write the data
-                for (Cluster cluster : clusters) {
-                    for (Point point : cluster.getPoints()) {
-                        double[] coordinates = point.getCoordinates();
-                        writer.printf("%s,%f,%f,%d\n", point.getId(), coordinates[0], coordinates[1], cluster.getClusterId());
-                    }
-                }
-            }
-        } catch (IOException e) {
-            System.err.println("Error writing to file: " + e.getMessage());
-        }
-    }
+//    public static double calculatePhi(List<Cluster> result) {
+//        double phi = 0.0;
+//        KMeans kmeans = new KMeans();
+//
+//        for (Cluster cluster : result) {
+//            for (Point p : cluster.getPoints()) {
+//                phi += kmeans.getDistanceOfCoordinates(p.getCoordinates(), cluster.getCentroid());
+//            }
+//        }
+//        return phi;
+//    }
+//
+//    public static void writeClustersToCSV(List<Cluster> clusters, String filePath) {
+//        try {
+//            File file = new File(filePath);
+//            file.getParentFile().mkdirs(); // Create the directory if it does not exist
+//            file.createNewFile(); // Create the file if it does not exist
+//
+//            try (PrintWriter writer = new PrintWriter(file)) {
+//                // Write the header
+//                writer.println("point_id,x_coordinate,y_coordinate,cluster_id");
+//
+//                // Write the data
+//                for (Cluster cluster : clusters) {
+//                    for (Point point : cluster.getPoints()) {
+//                        double[] coordinates = point.getCoordinates();
+//                        writer.printf("%s,%f,%f,%d\n", point.getId(), coordinates[0], coordinates[1], cluster.getClusterId());
+//                    }
+//                }
+//            }
+//        } catch (IOException e) {
+//            System.err.println("Error writing to file: " + e.getMessage());
+//        }
+//    }
 
     //BIC
     public static int estimateK(List<Point> dataset) {
@@ -158,10 +157,6 @@ public class A2_G4_t1 {
         return bic;
     }
 
-
-
-
-
     //silhouette
 //    public static int estimateK(List<Point> dataset) {
 //        int maxK = (int) Math.sqrt(dataset.size() / 2);
@@ -191,7 +186,7 @@ public class A2_G4_t1 {
 //        }
 //        return bestK;
 //    }
-
+//
     private static double calculateSilhouetteScore(List<Cluster> clusters, List<Point> dataset) {
         double totalSilhouetteScore = 0.0;
         int totalPoints = dataset.size();
@@ -430,7 +425,7 @@ class KMeans {
 
         // Pick other centroids with cluster.
         while (clusterIdIndex < n_clusters) {
-            double[] distances = new double[points.size()]; // points에 맞게 distances 저장
+            double[] distances = new double[points.size()];
             double totalDist = 0;
 
             for (int i = 0; i < points.size(); i++) {
