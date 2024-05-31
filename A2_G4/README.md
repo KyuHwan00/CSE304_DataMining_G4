@@ -14,8 +14,6 @@ cd A2_G4
 javac A2_G4_t1.java
 java A2_G4_t1 ./artd-31.csv 15
 ```
-### k-means(Random initialization)
-TBD
 
 ### DBSCAN
 ```bash
