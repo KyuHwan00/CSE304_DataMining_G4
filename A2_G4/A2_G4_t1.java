@@ -4,19 +4,23 @@ import java.util.*;
 public class A2_G4_t1 {
     static int n_clusters;
 
+    // select k-means++ or random(k-means)
+    static String kMeansInitFlag = "k-means++";
+//    static String kMeansInitFlag = "random";
     public static void main(String[] args) throws IOException {
         String inputFilePath = args[0];
 
+        // If the number of clusters is not provided, estimate k
         if (args.length < 2) {
-//            n_clusters = estimate_k();
-            n_clusters = 15; // estimate_k 구현 전까지는 임의로 지정
+            n_clusters = estimateK(dataLoader(inputFilePath));
             System.out.println("estimated k: " + n_clusters);
         } else {
             n_clusters = Integer.parseInt(args[1]);
         }
-        exec(inputFilePath, "k-means++");
+        exec(inputFilePath, kMeansInitFlag);
     }
 
+    // Execute the k-means or k-means++ clustering according to initFlag
     private static void exec(String inputFilePath, String initFlag) throws IOException {
         List<Point> dataset = dataLoader(inputFilePath);
 
@@ -27,10 +31,13 @@ public class A2_G4_t1 {
 
         Date end = new Date();
         long time = end.getTime() - start.getTime();
+//        writeClustersToCSV(result, "./output/output.csv");
         printResult(result);
-        // System.out.println("Execution time is " + time + " milliseconds");
+//         System.out.println(calculatePhi(result));
+//         System.out.println("Execution time is " + time + " milliseconds");
     }
 
+    // Load data points from a CSV file
     public static List<Point> dataLoader(String filePath) {
         List<Point> points = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
@@ -53,14 +60,7 @@ public class A2_G4_t1 {
         return points;
     }
 
-    public static int estimate_k(){
-        int k_proper;
-
-        k_proper = 0;
-
-        return k_proper;
-    }
-
+    // Print the clustering result
     public static void printResult(List<Cluster> result) {
         result.sort(Comparator.comparing(Cluster::getClusterId));
         int clusterIndex = 0;
@@ -70,17 +70,181 @@ public class A2_G4_t1 {
             System.out.println(output);
         }
     }
+
+//    public static double calculatePhi(List<Cluster> result) {
+//        double phi = 0.0;
+//        KMeans kmeans = new KMeans();
+//
+//        for (Cluster cluster : result) {
+//            for (Point p : cluster.getPoints()) {
+//                phi += kmeans.getDistanceOfCoordinates(p.getCoordinates(), cluster.getCentroid());
+//            }
+//        }
+//        return phi;
+//    }
+//
+//    public static void writeClustersToCSV(List<Cluster> clusters, String filePath) {
+//        try {
+//            File file = new File(filePath);
+//            file.getParentFile().mkdirs(); // Create the directory if it does not exist
+//            file.createNewFile(); // Create the file if it does not exist
+//
+//            try (PrintWriter writer = new PrintWriter(file)) {
+//                // Write the header
+//                writer.println("point_id,x_coordinate,y_coordinate,cluster_id");
+//
+//                // Write the data
+//                for (Cluster cluster : clusters) {
+//                    for (Point point : cluster.getPoints()) {
+//                        double[] coordinates = point.getCoordinates();
+//                        writer.printf("%s,%f,%f,%d\n", point.getId(), coordinates[0], coordinates[1], cluster.getClusterId());
+//                    }
+//                }
+//            }
+//        } catch (IOException e) {
+//            System.err.println("Error writing to file: " + e.getMessage());
+//        }
+//    }
+
+    // Estimate the number of clusters using the BIC method
+    public static int estimateK(List<Point> dataset) {
+        int maxK = (int) Math.sqrt(dataset.size()/2);
+        KMeans kmeans = new KMeans();
+
+        double bestBICScore = Double.POSITIVE_INFINITY;
+        double currentBICScore;
+
+        int k = 1;
+        int bestK = 1;
+
+        while (k < maxK) {
+            for (Point point : dataset) {
+                point.setClusterId(-1);
+            }
+            List<Cluster> clusters = kmeans.clustering(k, kMeansInitFlag, dataset);
+
+            currentBICScore = calculateBIC(clusters, k);
+
+//            System.out.println("k: " + k + ", BIC Score: " + currentBICScore + ", Best BIC Score: " + bestBICScore);
+            if (currentBICScore < bestBICScore) {
+                bestK = k;
+                bestBICScore = currentBICScore;
+            } else if (Double.isInfinite(currentBICScore) || Double.isNaN(currentBICScore)) {
+                break;
+            }
+            k++;
+        }
+
+        return bestK;
+    }
+
+    // Calculate the BIC score for the given clusters
+    public static double calculateBIC(List<Cluster> clusters, int k) {
+        double logLikelihood = 0;
+        int R = 0;
+
+        for (Cluster cluster : clusters) {
+            R += cluster.getPoints().size();
+        }
+
+        int numParameters = k - 1 + k * clusters.get(0).getCentroid().length + 1;
+
+        for (Cluster cluster : clusters) {
+            int M = cluster.getCentroid().length;
+            int R_n = cluster.getPoints().size();
+
+            logLikelihood -= 0.5 * R_n * Math.log(2 * Math.PI);
+            logLikelihood -= 0.5 * R_n * M * Math.log(cluster.getVariance(k));
+            logLikelihood -= 0.5 * (R_n - k);
+            logLikelihood += R_n * Math.log(R_n);
+            logLikelihood -= R_n * Math.log(R);
+        }
+
+        // Calculate BIC
+        double bic = - 2 * logLikelihood + numParameters * Math.log(R);
+        return bic;
+    }
+
+    //silhouette
+//    public static int estimateK(List<Point> dataset) {
+//        int maxK = (int) Math.sqrt(dataset.size() / 2);
+//        KMeans kmeans = new KMeans();
+//
+//        int bestK = 1;
+//        double bestSilhouetteScore = -1;
+//
+//        int k = 2;
+//        while (k < maxK) {
+//            for (Point point : dataset) {
+//                point.setClusterId(-1);
+//            }
+//
+//            List<Cluster> clusters = kmeans.clustering(k, kMeansInitFlag, dataset);
+//            //printResult(clusters);
+//
+//            // Compute silhouette score
+//            double silhouetteScore = calculateSilhouetteScore(clusters, dataset);
+//
+//            System.out.println("k: " + k + ", Silhouette Score: " + silhouetteScore + ", Best Silhouette Score: " + bestSilhouetteScore);
+//            if (silhouetteScore > bestSilhouetteScore) {
+//                bestK = k;
+//                bestSilhouetteScore = silhouetteScore;
+//            }
+//            k++;
+//        }
+//        return bestK;
+//    }
+//
+//    private static double calculateSilhouetteScore(List<Cluster> clusters, List<Point> dataset) {
+//        double totalSilhouetteScore = 0.0;
+//        int totalPoints = dataset.size();
+//
+//        for (Point point : dataset) {
+//            Cluster currentCluster = null;
+//            for (Cluster c : clusters) {
+//                if (c.getPoints().contains(point)) {
+//                    currentCluster = c;
+//                    break;
+//                }
+//            }
+//            double a = averageDistanceToCluster(point, currentCluster);
+//            double b = clusters.stream().filter(c -> !c.getPoints().contains(point))
+//                    .mapToDouble(c -> averageDistanceToCluster(point, c))
+//                    .min().orElse(Double.MAX_VALUE);
+//
+//            double silhouette = (b - a) / Math.max(a, b);
+//            totalSilhouetteScore += silhouette;
+//        }
+//
+//        return totalSilhouetteScore / totalPoints;
+//    }
+//
+//    private static double averageDistanceToCluster(Point point, Cluster cluster) {
+//        return cluster.getPoints().stream()
+//                .mapToDouble(p -> distance(point, p))
+//                .average().orElse(Double.MAX_VALUE);
+//    }
+//
+//    private static double distance(Point p1, Point p2) {
+//        double[] p1Coordinates = p1.getCoordinates();
+//        double[] p2Coordinates = p2.getCoordinates();
+//        double sum = 0.0;
+//        for (int i = 0; i < p1Coordinates.length; i++) {
+//            sum += Math.pow(p1Coordinates[i] - p2Coordinates[i], 2);
+//        }
+//        return Math.sqrt(sum);
+//    }
 }
 
 class Point {
-    private String id;
-    private double[] coordinates;
+    private final String id;
+    private final double[] coordinates;
     private int clusterId;
 
     public Point(String id, double[] coordinates) {
         this.id = id;
         this.coordinates = coordinates;
-        this.clusterId = -1; // 초기 클러스터 ID 설정, -1은 할당되지 않음을 의미
+        this.clusterId = -1; // Initial cluster ID set, -1 indicating unassigned
     }
 
     public void setClusterId(int clusterId) {
@@ -106,7 +270,7 @@ class Point {
 }
 
 class Cluster {
-    private int clusterId;
+    private final int clusterId;
     private double[] centroid;
     private List<Point> clusterPoints;
 
@@ -124,11 +288,11 @@ class Cluster {
         return centroid;
     }
 
-    public double[] setCentroid(double[] centroid) {
+    public void setCentroid(double[] centroid) {
         this.centroid = centroid;
-        return centroid;
     }
 
+    // Recalculate and return the new centroid of the cluster
     public double[] recalculateCentroid() {
         double[] newCentroid = new double[centroid.length];
 
@@ -147,25 +311,40 @@ class Cluster {
     }
 
     public void addPoint(Point point) {
-        clusterPoints.add(point);
+        this.clusterPoints.add(point);
     }
 
     public void removePoint(Point point) {
-        clusterPoints.remove(point);
+        this.clusterPoints.remove(point);
     }
 
     public void removePointById(String id) {
-        clusterPoints.removeIf(p -> p.getId().equals(id));
+        this.clusterPoints.removeIf(p -> p.getId().equals(id));
     }
 
     public String toString() {
         String output = "";
         clusterPoints.sort(Comparator.comparing(Point::getNumberId));
 
-        for (Point point : clusterPoints) {
-            output += point.getId() + " ";
-        }
+        for (Point point : clusterPoints) output += point.getId() + " ";
         return output;
+    }
+
+    // Calculate and return the variance of the cluster
+    public double getVariance(int k) {
+        int dimension = centroid.length;
+        int numPoints = clusterPoints.size();
+        double variance = 0.0;
+        for (Point p : clusterPoints) {
+            double[] coords = p.getCoordinates();
+            for (int i = 0; i < dimension; i++) {
+                variance += Math.pow(coords[i] - centroid[i], 2);
+            }
+        }
+
+        if (numPoints <= k) variance /= 1;
+        else variance /= numPoints- k;
+        return variance;
     }
 }
 
@@ -188,26 +367,23 @@ class KMeans {
         this.k = n_clusters;
         this.points = dataset;
 
-        initialization(initFlag, k);
+        initialization(initFlag, k); // Initialize centroids
 
-        while (!isFinished()) {
-            updateClusterAssignments();
-            updateCentroids();
-        }
+        clusteringHelper(); // Perform the clustering process
 
         return clusters;
     }
 
-    private double getDistanceOfPoints(Point p1, Point p2) { // 나중에 제곱을 l제곱으로 변경해서 generalize할 수 있음
-        double sumSquaredDiffs = 0.0;
-        for (int i = 0; i < p1.getCoordinates().length; i++) {
-            double diff = p1.getCoordinates()[i] - p2.getCoordinates()[i];
-            sumSquaredDiffs += diff * diff;
+    public void clusteringHelper() {
+        // Continue updating clusters until centroids converge
+        while (!isFinished()) {
+            updateClusterAssignments();
+            updateCentroids();
         }
-        return sumSquaredDiffs;
     }
 
-    private double getDistanceOfCoordinates(double[] p1, double[] p2) { // 나중에 제곱을 l제곱으로 변경해서 generalize할 수 있음
+    public double getDistanceOfCoordinates(double[] p1, double[] p2) { // Later, you can generalize by changing square to l square.
+        // Calculates the squared Euclidean distance between two points.
         double sumSquaredDiffs = 0.0;
         for (int i = 0; i < p1.length; i++) {
             double diff = p1[i] - p2[i];
@@ -216,8 +392,13 @@ class KMeans {
         return sumSquaredDiffs;
     }
 
+    // Initializes the centroids for the clusters.
     private void initialization(String initFlag, int n_clusters) {
-        int seed = 12345;
+        int seed = 304;
+        this.clusters = new ArrayList<>();
+        this.previousCentroids = new ArrayList<>();
+        this.currentCentroids = new ArrayList<>();
+
         if (initFlag.equals("k-means++")) {
             KMeansPlusPlus(n_clusters, seed);
         } else if (initFlag.equals("random")) {
@@ -228,6 +409,7 @@ class KMeans {
             clusters = new ArrayList<>();
             int clusterIdIndex = 0;
 
+            // Randomly select initial centroids
             while (clusters.size() < n_clusters) {
                 int randomPointIndex = random.nextInt(points.size());
 
@@ -257,9 +439,10 @@ class KMeans {
 
         // Pick other centroids with cluster.
         while (clusterIdIndex < n_clusters) {
-            double[] distances = new double[points.size()]; // points에 맞게 distances 저장
+            double[] distances = new double[points.size()];
             double totalDist = 0;
 
+            // Calculate distance of each point from the nearest centroid
             for (int i = 0; i < points.size(); i++) {
                 double shortestDist = Double.MAX_VALUE;
                 for (double[] centroid : centroids) {
@@ -270,6 +453,7 @@ class KMeans {
                 totalDist += shortestDist;
             }
 
+            // Select new centroid based on distance
             double randomValue = random.nextDouble() * totalDist;
             for (int i = 0; i < distances.length; i++) {
                 randomValue -= distances[i];
@@ -284,6 +468,7 @@ class KMeans {
         currentCentroids = centroids;
     }
 
+    // Assigns points to the nearest cluster based on current centroids.
     private void updateClusterAssignments() {
         for (Point point : points) {
             double closestDist = Double.MAX_VALUE;
@@ -291,6 +476,7 @@ class KMeans {
                 closestDist = getDistanceOfCoordinates(point.getCoordinates(), clusters.get(point.getClusterId()).getCentroid());
             }
 
+            // // Find the nearest centroid and assign the point to that cluster
             for (Cluster cluster : clusters) {
                 double dist = getDistanceOfCoordinates(point.getCoordinates(), cluster.getCentroid());
 
@@ -308,18 +494,20 @@ class KMeans {
         }
     }
 
-    private List<double[]> updateCentroids() {
+    // Updates the centroids of the clusters based on current assignments.
+    private void updateCentroids() {
         previousCentroids = new ArrayList<>(currentCentroids);
         List<double[]> centroids = new ArrayList<>();
 
+        // Recalculate centroid for each cluster
         for (int i = 0; i < clusters.size(); i++) {
             centroids.add(clusters.get(i).recalculateCentroid());
         }
 
         currentCentroids = centroids;
-        return centroids;
     }
 
+    // Checks if the centroids have converged (no significant changes).
     private boolean isFinished(){
         if (previousCentroids == null || currentCentroids == null || previousCentroids.size() != currentCentroids.size()) {
             return false;
@@ -341,5 +529,4 @@ class KMeans {
         }
         return true;
     }
-
 }
