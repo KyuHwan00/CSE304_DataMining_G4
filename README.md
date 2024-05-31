@@ -54,5 +54,9 @@ TBD
 ### DBSCAN
 ```bash
 javac A2_G4_t2.java
-java A2_G4_t2 ./artd-31.csv 15
+java A2_G4_t2 ./artd-31.csv 4
+```
+You can use splitKDist by entering mu along with s=splitNum.
+```bash
+java A2_G4_t2 ./artd-31.csv 4 s=2
 ```
